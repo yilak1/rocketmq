@@ -32,6 +32,11 @@ public class DeleteAccessConfigSubCommand implements SubCommand {
 
     @Override
     public String commandName() {
+        return "deleteAclConfig";
+    }
+
+    @Override
+    public String commandAlias() {
         return "deleteAccessConfig";
     }
 
@@ -60,7 +65,8 @@ public class DeleteAccessConfigSubCommand implements SubCommand {
         return options;
     }
 
-    @Override public void execute(CommandLine commandLine, Options options,
+    @Override
+    public void execute(CommandLine commandLine, Options options,
         RPCHook rpcHook) throws SubCommandException {
 
         DefaultMQAdminExt defaultMQAdminExt = new DefaultMQAdminExt(rpcHook);
@@ -85,9 +91,9 @@ public class DeleteAccessConfigSubCommand implements SubCommand {
 
                 defaultMQAdminExt.start();
 
-                Set<String> masterSet =
-                    CommandUtil.fetchMasterAddrByClusterName(defaultMQAdminExt, clusterName);
-                for (String addr : masterSet) {
+                Set<String> brokerAddrSet =
+                    CommandUtil.fetchMasterAndSlaveAddrByClusterName(defaultMQAdminExt, clusterName);
+                for (String addr : brokerAddrSet) {
                     defaultMQAdminExt.deletePlainAccessConfig(addr, accessKey);
                     System.out.printf("delete plain access config account from %s success.%n", addr);
                 }

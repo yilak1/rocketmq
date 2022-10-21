@@ -30,6 +30,7 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.protocol.body.ConsumeMessageDirectlyResult;
+import org.apache.rocketmq.common.protocol.body.ConsumerRunningInfo;
 import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingException;
@@ -114,7 +115,7 @@ public class QueryMsgByUniqueKeySubCommand implements SubCommand {
     private static String createBodyFile(MessageExt msg, int index) throws IOException {
         DataOutputStream dos = null;
         try {
-            StringBuffer bodyTmpFilePath = new StringBuffer("/tmp/rocketmq/msgbodys");
+            StringBuilder bodyTmpFilePath = new StringBuilder("/tmp/rocketmq/msgbodys");
             File file = new File(bodyTmpFilePath.toString());
             if (!file.exists()) {
                 file.mkdirs();
@@ -127,8 +128,9 @@ public class QueryMsgByUniqueKeySubCommand implements SubCommand {
             dos.write(msg.getBody());
             return bodyTmpFilePath.toString();
         } finally {
-            if (dos != null)
+            if (dos != null) {
                 dos.close();
+            }
         }
     }
 
@@ -179,9 +181,20 @@ public class QueryMsgByUniqueKeySubCommand implements SubCommand {
             if (commandLine.hasOption('g') && commandLine.hasOption('d')) {
                 final String consumerGroup = commandLine.getOptionValue('g').trim();
                 final String clientId = commandLine.getOptionValue('d').trim();
-                ConsumeMessageDirectlyResult result =
-                    defaultMQAdminExt.consumeMessageDirectly(consumerGroup, clientId, topic, msgId);
-                System.out.printf("%s", result);
+                ConsumerRunningInfo consumerRunningInfo = null;
+                try {
+                    consumerRunningInfo = defaultMQAdminExt.getConsumerRunningInfo(consumerGroup, clientId, false, false);
+                } catch (Exception e) {
+                    System.out.printf("get consumer runtime info for %s client failed \n", clientId);
+                }
+                if (consumerRunningInfo != null && ConsumerRunningInfo.isPushType(consumerRunningInfo)) {
+                    ConsumeMessageDirectlyResult result =
+                            defaultMQAdminExt.consumeMessageDirectly(consumerGroup, clientId, topic, msgId);
+                    System.out.printf("%s", result);
+                } else {
+                    System.out.printf("get consumer info failed or this %s client is not push consumer ,not support direct push \n", clientId);
+                }
+
             } else {
                 queryById(defaultMQAdminExt, topic, msgId, showAll);
             }

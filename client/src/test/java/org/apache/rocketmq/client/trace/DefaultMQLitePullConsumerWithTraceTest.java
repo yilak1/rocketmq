@@ -25,7 +25,6 @@ import org.apache.rocketmq.client.consumer.PullResult;
 import org.apache.rocketmq.client.consumer.PullStatus;
 import org.apache.rocketmq.client.consumer.store.OffsetStore;
 import org.apache.rocketmq.client.consumer.store.ReadOffsetType;
-import org.apache.rocketmq.client.hook.SendMessageContext;
 import org.apache.rocketmq.client.impl.CommunicationMode;
 import org.apache.rocketmq.client.impl.FindBrokerResult;
 import org.apache.rocketmq.client.impl.MQAdminImpl;
@@ -52,7 +51,9 @@ import org.apache.rocketmq.common.protocol.route.QueueData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 import org.apache.rocketmq.common.topic.TopicValidator;
 import org.apache.rocketmq.remoting.RPCHook;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -104,6 +105,11 @@ public class DefaultMQLitePullConsumerWithTraceTest {
 
     private String customerTraceTopic = "rmq_trace_topic_12345";
 
+    @BeforeClass
+    public static void setUpEnv() {
+        System.setProperty("rocketmq.client.logRoot", System.getProperty("java.io.tmpdir"));
+    }
+
     @Before
     public void init() throws Exception {
         Field field = MQClientInstance.class.getDeclaredField("rebalanceService");
@@ -146,6 +152,15 @@ public class DefaultMQLitePullConsumerWithTraceTest {
         }
     }
 
+    @Test
+    public void testLitePullConsumerWithTraceTLS() throws Exception {
+        DefaultLitePullConsumer consumer = new DefaultLitePullConsumer("consumerGroup");
+        consumer.setUseTLS(true);
+        consumer.setEnableMsgTrace(true);
+        consumer.start();
+        AsyncTraceDispatcher asyncTraceDispatcher = (AsyncTraceDispatcher) consumer.getTraceDispatcher();
+        Assert.assertTrue(asyncTraceDispatcher.getTraceProducer().isUseTLS());
+    }
 
     private DefaultLitePullConsumer createLitePullConsumerWithDefaultTraceTopic() throws Exception {
         DefaultLitePullConsumer litePullConsumer = new DefaultLitePullConsumer(consumerGroup + System.currentTimeMillis());
@@ -209,7 +224,7 @@ public class DefaultMQLitePullConsumerWithTraceTest {
         field.setAccessible(true);
         field.set(litePullConsumerImpl, offsetStore);
 
-        traceProducer.getDefaultMQProducerImpl().getmQClientFactory().registerProducer(producerGroupTraceTemp, traceProducer.getDefaultMQProducerImpl());
+        traceProducer.getDefaultMQProducerImpl().getMqClientFactory().registerProducer(producerGroupTraceTemp, traceProducer.getDefaultMQProducerImpl());
 
         when(mQClientFactory.getMQClientAPIImpl().pullMessage(anyString(), any(PullMessageRequestHeader.class),
             anyLong(), any(CommunicationMode.class), nullable(PullCallback.class)))
